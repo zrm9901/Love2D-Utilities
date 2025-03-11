@@ -121,6 +121,18 @@ function Object:StoreVars(name, vars, values)
     end
 end
 
+function Object:CreateTable(tableName, values)
+    self.tables  = self.tables or {}
+    values = values or {}
+    if not (type(values) == "table") then
+        values = {}
+    end
+    if tableName then
+        self.tables[tableName] = values
+    end
+
+end
+
 function DeepCopy(orig)
     local orig_type = type(orig)
     local copy
@@ -176,12 +188,15 @@ function love.load()
     }
 
     Base:StoreVars("self", "mouse", mouseState)
-    Base:StoreVars("self", "tables", {state = true})
+    Base:StoreVars("self", "tables", {})
+    Base:StoreVars("self", "loadedImages", {})
+    Base:StoreVars("self", "canvases", {})
 
 end
 
 --called every frame
 function love.draw()
+
 end
 
 function love.update()
@@ -205,26 +220,14 @@ function love.mousereleased(x, y, button)
     end
 end
 
-
-function Mouse:WhileDown()
-
-    local mouseState = Base.mouse
-    local x, y = love.mouse.getPosition()
-    
-end
-
-function Mouse:Action(right, left, x, y)
-    
-end
-
---draw specific methods
+--draw functions
 
 function Draw:init() 
     self.loadedImages = {}
     self.canvases = {}
 end
 function Draw:Clear(canvas)
-    love.graphics.setCanvas(self.canvases[canvas])
+    love.graphics.setCanvas(Base.canvases[canvas])
     love.graphics.clear()
     love.graphics.setCanvas()
 end
@@ -238,26 +241,26 @@ function Draw:DrawImage(canvas, image, x, y, mode)
     y = y or 0
     mode = mode or "default"
 
-    love.graphics.setCanvas(self.canvases[canvas])
-    local imageX, imageY = self.loadedImages[image]:getDimensions()
+    love.graphics.setCanvas(Base.canvases[canvas])
+    local imageX, imageY = Base.loadedImages[image]:getDimensions()
 
     if mode == "default" then 
-        love.graphics.draw(self.loadedImages[image], x , y)
+        love.graphics.draw(Base.loadedImages[image], x , y)
     elseif mode == "center" then
-        love.graphics.draw(self.loadedImages[image], (x - (imageX / 2)), (y - (imageY / 2)))
+        love.graphics.draw(Base.loadedImages[image], (x - (imageX / 2)), (y - (imageY / 2)))
     end
     love.graphics.setCanvas()
 end
 
 function Draw:StoreImages(image, ext)
     image = image or {}
-    self.loadedImages = self.loadedImages or {}
+    Base.loadedImages = Base.loadedImages or {}
     if image then
         if not (type(image) == "table") then
-            self.loadedImages[image] = love.graphics.newImage(image..ext)
+            Base.loadedImages[image] = love.graphics.newImage(image..ext)
         elseif not (next(image) == nil) then
             for _, i in pairs(image) do
-                self.loadedImages[i] = love.graphics.newImage(i..ext)
+                Base.loadedImages[i] = love.graphics.newImage(i..ext)
             end
         end
     end
@@ -265,14 +268,14 @@ end
 
 function Draw:CreateCanvas(canvas)
     canvas = canvas or {}
-    self.canvases = self.canvases or {}
+    Base.canvases = Base.canvases or {}
     if canvas then 
         if not (type(canvas) == "table") then
-            self.canvases[canvas] = love.graphics.newCanvas()
+            Base.canvases[canvas] = love.graphics.newCanvas()
         elseif not (next(canvas) == nil) then 
             print("table")
             for _, i in pairs(canvas) do
-                self.canvases[i] = love.graphics.newCanvas()
+                Base.canvases[i] = love.graphics.newCanvas()
             end
         end
     end
