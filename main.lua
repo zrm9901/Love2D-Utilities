@@ -6,7 +6,7 @@ Object.__index = Object
 
 function Object:init()
 end
---hello
+--hello~
 
 function Object:new(table)
     table = table or {}
