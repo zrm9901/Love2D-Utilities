@@ -133,6 +133,61 @@ function Object:CreateTable(tableName, values)
 
 end
 
+function Object:Clear(canvas)
+    love.graphics.setCanvas(self.canvases[canvas])
+    love.graphics.clear()
+    love.graphics.setCanvas()
+end
+
+function Object:Rgb(r, g, b, a)
+    return r/255, g/255, b/255, (a or 255)/255
+end
+
+function Object:BaseImage(canvas, image, x, y, mode)
+    x = x or 0
+    y = y or 0
+    mode = mode or "default"
+
+    love.graphics.setCanvas(self.canvases[canvas])
+    local imageX, imageY = self.loadedImages[image]:getDimensions()
+
+    if mode == "default" then 
+        love.graphics.draw(self.loadedImages[image], x , y)
+    elseif mode == "center" then
+        love.graphics.draw(self.loadedImages[image], (x - (imageX / 2)), (y - (imageY / 2)))
+    end
+    love.graphics.setCanvas()
+end
+
+function Object:StoreImages(image, ext)
+    image = image or {}
+    self.loadedImages = self.loadedImages or {}
+    if image then
+        if not (type(image) == "table") then
+            self.loadedImages[image] = love.graphics.newImage(image..ext)
+        elseif not (next(image) == nil) then
+            for _, i in pairs(image) do
+                self.loadedImages[i] = love.graphics.newImage(i..ext)
+            end
+        end
+    end
+end
+
+function Object:CreateCanvas(canvas)
+    canvas = canvas or {}
+    self.canvases = self.canvases or {}
+    if canvas then 
+        if not (type(canvas) == "table") then
+            self.canvases[canvas] = love.graphics.newCanvas()
+        elseif not (next(canvas) == nil) then 
+            print("table")
+            for _, i in pairs(canvas) do
+                self.canvases[i] = love.graphics.newCanvas()
+            end
+        end
+    end
+end
+
 function DeepCopy(orig)
     local orig_type = type(orig)
     local copy
@@ -151,7 +206,6 @@ end
 function GetAllTables(obj)
     local tables = {}
     local current = obj
-    
     while current do
         for key, value in pairs(current) do
             -- Check if the value is a table
@@ -162,20 +216,14 @@ function GetAllTables(obj)
         -- Move up to the parent (via metatable)
         current = getmetatable(current)
     end
-    
     return tables
 end
 
-------------------------------------------------------
+
 --main logic
 love.window.setMode(800,800)
 
 Base = Object:extend()
-
-Draw = Base:new()
-
-Mouse = Base:new()
-
 
 --called upon loading
 function love.load()
@@ -186,12 +234,19 @@ function love.load()
         x = nil,
         y = nil
     }
-
-    Base:StoreVars("self", "mouse", mouseState)
-    Base:StoreVars("self", "tables", {})
-    Base:StoreVars("self", "loadedImages", {})
-    Base:StoreVars("self", "canvases", {})
-
+    local tables = {
+        "mouse",
+        "tables",
+        "loadedImages",
+        "canvases"
+    }
+    local values = {
+        mouseState,
+        {},
+        {},
+        {}
+    }
+    Base:StoreVars("self", tables, values)
 end
 
 --called every frame
@@ -203,6 +258,7 @@ function love.update()
     
 end
 
+--called when mouse state is changed
 function love.mousepressed(button)
     if button == 1 then
         Base.mouse["down"], Base.mouse["left"],  Base.mouse["x"], Base.mouse["y"] = true, true, love.mouse.getPosition() 
@@ -217,66 +273,5 @@ function love.mousereleased(x, y, button)
         Base.mouse["down"], Base.mouse["left"],  Base.mouse["x"], Base.mouse["y"] = false, false, nil, nil
     elseif button == 2 then
         Base.mouse["down"], Base.mouse["right"],  Base.mouse["x"], Base.mouse["y"] = false, false, nil, nil
-    end
-end
-
---draw functions
-
-function Draw:init() 
-    self.loadedImages = {}
-    self.canvases = {}
-end
-function Draw:Clear(canvas)
-    love.graphics.setCanvas(Base.canvases[canvas])
-    love.graphics.clear()
-    love.graphics.setCanvas()
-end
-
-function Draw:Rgb(r, g, b, a)
-    return r/255, g/255, b/255, (a or 255)/255
-end
-
-function Draw:DrawImage(canvas, image, x, y, mode)
-    x = x or 0
-    y = y or 0
-    mode = mode or "default"
-
-    love.graphics.setCanvas(Base.canvases[canvas])
-    local imageX, imageY = Base.loadedImages[image]:getDimensions()
-
-    if mode == "default" then 
-        love.graphics.draw(Base.loadedImages[image], x , y)
-    elseif mode == "center" then
-        love.graphics.draw(Base.loadedImages[image], (x - (imageX / 2)), (y - (imageY / 2)))
-    end
-    love.graphics.setCanvas()
-end
-
-function Draw:StoreImages(image, ext)
-    image = image or {}
-    Base.loadedImages = Base.loadedImages or {}
-    if image then
-        if not (type(image) == "table") then
-            Base.loadedImages[image] = love.graphics.newImage(image..ext)
-        elseif not (next(image) == nil) then
-            for _, i in pairs(image) do
-                Base.loadedImages[i] = love.graphics.newImage(i..ext)
-            end
-        end
-    end
-end
-
-function Draw:CreateCanvas(canvas)
-    canvas = canvas or {}
-    Base.canvases = Base.canvases or {}
-    if canvas then 
-        if not (type(canvas) == "table") then
-            Base.canvases[canvas] = love.graphics.newCanvas()
-        elseif not (next(canvas) == nil) then 
-            print("table")
-            for _, i in pairs(canvas) do
-                Base.canvases[i] = love.graphics.newCanvas()
-            end
-        end
     end
 end
