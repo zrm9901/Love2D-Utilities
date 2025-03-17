@@ -1,13 +1,14 @@
 HC = require 'HC'
 
---object creation
-Object = {}
-Object.__index = Object
+--Util creation
+Util = {}
+Util.__index = Util
 
-function Object:init()
+function Util:init()
+    
 end
 
-function Object:new(table)
+function Util:new(table)
     table = table or {}
     local obj = setmetatable({}, self)
 
@@ -15,7 +16,7 @@ function Object:new(table)
     
     for key, value in pairs(tables) do
         if key and value and key ~= "table" and key ~= "__index" and key ~= "super" then
-            -- Copy the table to the child object
+            -- Copy the table to the child Util
             obj[key] = DeepCopy(value)
             print(key)  -- Just to see which key is being copied
         end
@@ -34,7 +35,8 @@ function Object:new(table)
     return obj
 end
 
-function Object:extend()
+function Util:extend()
+    
     local subclass = {} 
     for k, v in pairs(self) do
         if v and k and k ~= "table" and k ~= "__index" and k ~= "super" then
@@ -43,12 +45,14 @@ function Object:extend()
             subclass[k] = v
         end
     end
-    subclass.__index = subclass 
+
+    setmetatable(subclass, { __index = self })
+
     subclass.super = self 
     return subclass
 end
 
-function Object:is(class)
+function Util:is(class)
     local mt = getmetatable(self) 
     while mt do
         if mt == class then
@@ -59,7 +63,49 @@ function Object:is(class)
     return false
 end
 
-function Object:StoreVars(name, vars, values)
+function Util:CreateCollider(name, type, width, height, x, y, visible, layer)
+    layer = layer or "default"
+    local collider = self.physLayer[layer]
+    local colliderObject = collider.layer
+    if name == "layer" then
+        return
+    end
+
+    if type == "rect" then
+        collider[name] = colliderObject:rectangle(x, y, width, height)
+    else
+        local radius = (width + height) / 4
+        collider[name] = colliderObject:circle(x + radius, y + radius, radius)
+    end
+
+    collider[name].visible = visible
+end
+
+function Util:MoveObject(name, dx, dy)
+    local collider = self.colliders[name]
+    collider:move(dx, dy)
+end
+
+function Util:MoveObjectTo(name, x, y)
+    local collider = self.colliders[name]
+    collider:moveTo(x, y)
+end
+
+function Util:DrawColliders(layer)
+    layer = layer or "default"
+    local collider = self.physLayer[layer]
+    if not (next(collider) == nil) then
+        for i, j in pairs(collider) do
+            if i ~= "layer" then 
+                if j.visible == true then
+                    j:draw('fill')
+                end
+            end
+        end
+    end
+end
+
+function Util:StoreVars(name, vars, values)
     name = name or nil
     vars = vars or nil
     values = values or nil
@@ -121,7 +167,7 @@ function Object:StoreVars(name, vars, values)
     end
 end
 
-function Object:CreateTable(tableName, values)
+function Util:CreateTable(tableName, values)
     self.tables  = self.tables or {}
     values = values or {}
     if not (type(values) == "table") then
@@ -133,17 +179,17 @@ function Object:CreateTable(tableName, values)
 
 end
 
-function Object:Clear(canvas)
+function Util:Clear(canvas)
     love.graphics.setCanvas(self.canvases[canvas])
     love.graphics.clear()
     love.graphics.setCanvas()
 end
 
-function Object:Rgb(r, g, b, a)
+function Util:Rgb(r, g, b, a)
     return r/255, g/255, b/255, (a or 255)/255
 end
 
-function Object:BaseImage(canvas, image, x, y, mode)
+function Util:DrawImage(canvas, image, x, y, mode)
     x = x or 0
     y = y or 0
     mode = mode or "default"
@@ -159,7 +205,7 @@ function Object:BaseImage(canvas, image, x, y, mode)
     love.graphics.setCanvas()
 end
 
-function Object:StoreImages(image, ext)
+function Util:StoreImages(image, ext)
     image = image or {}
     self.loadedImages = self.loadedImages or {}
     if image then
@@ -173,7 +219,7 @@ function Object:StoreImages(image, ext)
     end
 end
 
-function Object:CreateCanvas(canvas)
+function Util:CreateCanvas(canvas)
     canvas = canvas or {}
     self.canvases = self.canvases or {}
     if canvas then 
@@ -188,7 +234,7 @@ function Object:CreateCanvas(canvas)
     end
 end
 
-function Object:InitializeVars()
+function Util:InitializeVars()
     local mouseState  = {
         down = false,
         left = false,
@@ -200,16 +246,27 @@ function Object:InitializeVars()
         "mouse",
         "tables",
         "loadedImages",
-        "canvases"
+        "canvases",
+        "physLayer"
     }
     local values = {
         mouseState,
         {},
         {},
+        {},
         {}
     }
-    Base:StoreVars("self", tables, values)
+
+    Util:StoreVars("self", tables, values)
+
+    Util:CreatePhysicsLayer("default")
 end
+
+function Util:CreatePhysicsLayer(layerName)
+    self.physLayer[layerName] = self.physLayer[layerName] or {}
+    self.physLayer[layerName].layer = HC.new()
+end
+
 function DeepCopy(orig)
     local orig_type = type(orig)
     local copy
@@ -241,23 +298,20 @@ function GetAllTables(obj)
     return tables
 end
 
-
-
-
 --called when mouse state is changed
-function love.mousepressed(button)
+function love.mousepressed(x, y, button)
     if button == 1 then
-        Base.mouse["down"], Base.mouse["left"],  Base.mouse["x"], Base.mouse["y"] = true, true, love.mouse.getPosition() 
+        Util.mouse["down"], Util.mouse["left"],  Util.mouse["x"], Util.mouse["y"] = true, true, love.mouse.getPosition() 
     elseif button == 2 then
-        Base.mouse["down"], Base.mouse["right"],  Base.mouse["x"], Base.mouse["y"] = true, true, love.mouse.getPosition() 
+        Util.mouse["down"], Util.mouse["right"],  Util.mouse["x"], Util.mouse["y"] = true, true, love.mouse.getPosition() 
     end
 
 end
 
 function love.mousereleased(x, y, button)
     if button == 1 then
-        Base.mouse["down"], Base.mouse["left"],  Base.mouse["x"], Base.mouse["y"] = false, false, nil, nil
+        Util.mouse["down"], Util.mouse["left"],  Util.mouse["x"], Util.mouse["y"] = false, false, nil, nil
     elseif button == 2 then
-        Base.mouse["down"], Base.mouse["right"],  Base.mouse["x"], Base.mouse["y"] = false, false, nil, nil
+        Util.mouse["down"], Util.mouse["right"],  Util.mouse["x"], Util.mouse["y"] = false, false, nil, nil
     end
 end
